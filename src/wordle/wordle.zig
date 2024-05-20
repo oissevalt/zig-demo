@@ -5,6 +5,8 @@ const term = @import("input.zig");
 const String = std.ArrayList(u8);
 const Allocator = std.mem.Allocator;
 
+pub const Wordle = @This();
+
 pub const WordleConfig = struct {
     word_length: usize = 5,
     max_attempts: usize = 6,
