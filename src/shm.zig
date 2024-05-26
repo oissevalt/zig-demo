@@ -8,7 +8,7 @@ const PROT = std.posix.PROT;
 const MAP = std.posix.MAP;
 const File = std.fs.File;
 
-pub fn intercomm(comptime T: type, comptime data: []const T) !void {
+pub fn descendantIpc(comptime T: type, comptime data: []const T) !void {
     const raw_data = try posix.mmap(
         null, // Starting address, null meaning decided by OS.
         @sizeOf(T) * data.len, // Length of bytes mapped.
@@ -36,12 +36,11 @@ pub fn intercomm(comptime T: type, comptime data: []const T) !void {
         if (result.status != 0) {
             return error.ChildError;
         }
-
         std.debug.print("[MAIN] Sorted array: {any}\n", .{shared});
     }
 }
 
 test "Interprocess Communication" {
     const array = comptime [_]u8{ 3, 9, 2, 8, 7, 4, 0, 7, 10, 5 };
-    try intercomm(u8, &array);
+    try descendantIpc(u8, &array);
 }

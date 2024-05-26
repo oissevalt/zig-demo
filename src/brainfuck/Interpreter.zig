@@ -66,10 +66,13 @@ pub fn interpret(
 
     const cells = try allocator.alloc(u8, environ.cell_size);
     defer allocator.free(cells);
-    @memset(cells, 0); // important
+    @memset(cells, 0); // clear garbage data
 
     var cell_index: usize = 0;
     var token_index: usize = 0;
+
+    const jump_map = try drawJumpMap(tokens, allocator);
+    defer allocator.free(jump_map);
 
     while (token_index < tokens.len) {
         switch (tokens[token_index]) {
@@ -115,45 +118,46 @@ pub fn interpret(
                 // For a JumpForward command, check if cells[cell_index] is
                 // zero. If so, jump to the NEXT command of the matching JumpBackward.
                 if (cells[cell_index] == 0) {
-                    var depth: usize = 1;
-                    var finder_index = token_index;
-                    while (depth > 0) {
-                        finder_index += 1;
-                        if (finder_index == tokens.len - 1) {
-                            return SyntaxError.MissingLoopEnd;
-                        }
-                        switch (tokens[finder_index]) {
-                            .JumpForward => depth += 1,
-                            .JumpBackward => depth -= 1,
-                            else => {},
-                        }
-                    }
-                    token_index = finder_index;
+                    token_index = jump_map[token_index];
                 }
             },
             .JumpBackward => {
                 // For a JumpBackward command, check if cells[cell_index] is
                 // NOT zero. If so, jump to the NEXT command of the matching JumpForward.
                 if (cells[cell_index] != 0) {
-                    var depth: usize = 1;
-                    var finder_index = token_index;
-                    while (depth > 0) {
-                        if (finder_index == 0) {
-                            return SyntaxError.MissingLoopStart;
-                        }
-                        finder_index -= 1;
-                        switch (tokens[finder_index]) {
-                            .JumpForward => depth -= 1,
-                            .JumpBackward => depth += 1,
-                            else => {},
-                        }
-                    }
-                    token_index = finder_index;
+                    token_index = jump_map[token_index];
                 }
             },
         }
         token_index += 1;
     }
+}
+
+fn drawJumpMap(tokens: []const Token, allocator: Allocator) ![]const usize {
+    const jump_map = try allocator.alloc(usize, tokens.len);
+    @memset(jump_map, 0);
+
+    var stack = std.ArrayList(usize).init(allocator);
+    defer stack.deinit();
+
+    for (tokens, 0..) |token, index| {
+        switch (token) {
+            .JumpForward => {
+                try stack.append(index);
+            },
+            .JumpBackward => {
+                const start = stack.popOrNull() orelse return SyntaxError.MissingLoopStart;
+                jump_map[start] = index;
+                jump_map[index] = start;
+            },
+            else => {},
+        }
+    }
+
+    if (stack.items.len != 0) {
+        return SyntaxError.MissingLoopEnd;
+    }
+    return jump_map;
 }
 
 test "Brainfuck 'Hello World'" {
@@ -168,5 +172,9 @@ test "Brainfuck 'Hello World'" {
     const data = try file.reader().readAllAlloc(testing.allocator, 4096);
     defer testing.allocator.free(data);
 
-    try Interpreter.interpret(data, .{}, testing.allocator);
+    var output_buffer = std.ArrayList(u8).init(testing.allocator);
+    defer output_buffer.deinit();
+
+    try Interpreter.interpret(data, .{ .output_source = output_buffer.writer().any() }, testing.allocator);
+    try testing.expectEqualStrings("Hello World!\n", output_buffer.items);
 }
