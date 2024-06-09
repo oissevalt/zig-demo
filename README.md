@@ -5,7 +5,7 @@
 > 
 > Specifics are listed below:
 >
-> - Zig version:  0.12.0 (release)
+> - Zig version:  0.13.0 (release)
 > - System:       macOS 14.4.1
 > - Architecture: M2 (aarch64)
 

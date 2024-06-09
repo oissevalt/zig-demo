@@ -68,11 +68,11 @@ pub fn interpret(
     defer allocator.free(cells);
     @memset(cells, 0); // clear garbage data
 
-    var cell_index: usize = 0;
-    var token_index: usize = 0;
-
     const jump_map = try drawJumpMap(tokens, allocator);
     defer allocator.free(jump_map);
+
+    var cell_index: usize = 0;
+    var token_index: usize = 0;
 
     while (token_index < tokens.len) {
         switch (tokens[token_index]) {

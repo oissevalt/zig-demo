@@ -1,5 +1,6 @@
-# Product folder
+# Product folder (.zig-cache for Zig 0.13+)
 zig-cache/
+.zig-cache/
 zig-out/
 
 # IDE folders
